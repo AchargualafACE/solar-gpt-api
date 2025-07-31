@@ -5,7 +5,34 @@ export default function handler(req, res) {
 
   const { title, type, text, ahj_rules } = req.body;
 
-  if (!title || !type || !text) {
+  if (!title || !type || !text) {const violations = [];
+
+const lower = text.toLowerCase();
+
+// 🚨 Block redlined sheets
+if (
+  lower.includes("revise") ||
+  lower.includes("as noted") ||
+  lower.includes("remove") ||
+  lower.includes("see detail") ||
+  lower.includes("cloud") // clouded area on redline scans
+) {
+  violations.push({
+    issue: "Sheet appears redlined or hand-marked",
+    code: "AHJ Submission Blocker",
+    fix: "Reproduce the page digitally with all corrections applied"
+  });
+}
+
+// 🚨 Block unreadable or garbage OCR
+if (text.length < 100 || text.match(/�|%PDF|scan|illegible|unreadable/i)) {
+  violations.push({
+    issue: "Text too short or unreadable (possible poor scan or OCR failure)",
+    code: "Permit Blocker",
+    fix: "Reupload a clean, machine-readable plan sheet"
+  });
+}
+
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
