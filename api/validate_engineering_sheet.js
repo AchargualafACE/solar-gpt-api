@@ -53,3 +53,10 @@ export default function handler(req, res) {
 
   return res.status(200).json(result);
 }
+if (text.includes("REVISE") || text.includes("REMOVE") || text.includes("AS NOTED")) {
+  violations.push({
+    issue: "Redline detected in plan set",
+    code: "AHJ Submission Blocker",
+    fix: "Redraw sheet digitally with revisions before submission"
+  });
+}
