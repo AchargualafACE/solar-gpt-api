@@ -3,27 +3,53 @@ export default function handler(req, res) {
     return res.status(405).json({ error: 'Only POST allowed' });
   }
 
-  const { sheet_text, system_type, voltage_level } = req.body;
+  const { title, type, text, ahj_rules } = req.body;
+
+  if (!title || !type || !text) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
   const violations = [];
-  const suggestions = [];
 
-  if (!sheet_text) {
-    return res.status(400).json({ error: 'Missing sheet_text' });
+  if (type === "electrical") {
+    if (!text.includes("OCPD") && !(ahj_rules?.ignore_ocpd_check)) {
+      violations.push({
+        issue: "Missing overcurrent protection device (OCPD)",
+        code: "NEC 240.4(B)",
+        fix: "Specify OCPD type and ampacity on the diagram"
+      });
+    }
+
+    if (!text.toLowerCase().includes("ground")) {
+      violations.push({
+        issue: "Missing grounding details",
+        code: "NEC 250.66",
+        fix: "Show grounding electrode conductor sizing and connections"
+      });
+    }
   }
 
-  // Simple validation example
-  if (sheet_text.includes("10 AWG") && sheet_text.includes("40A")) {
-    violations.push({
-      issue: "OCPD exceeds ampacity of 10 AWG CU",
-      code_ref: "NEC 240.4(D)"
-    });
-    suggestions.push("Reduce breaker to 30A or upsize to 8 AWG CU");
+  if (type === "labels") {
+    if (!text.includes("Rapid Shutdown")) {
+      violations.push({
+        issue: "Missing rapid shutdown label",
+        code: "NEC 690.56(C)",
+        fix: "Add permanent label at point of service"
+      });
+    }
+
+    if (ahj_rules?.labeling === "none_required") {
+      // Custom override to ignore all label requirements
+      violations.length = 0;
+    }
   }
 
-  res.status(200).json({
-    status: violations.length > 0 ? "fail" : "pass",
-    violations,
-    suggestions
-  });
+  const result = {
+    sheet: title,
+    type,
+    status: violations.length === 0 ? "pass" : "fail",
+    violations
+  };
+
+  return res.status(200).json(result);
 }
